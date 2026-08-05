@@ -1,0 +1,38 @@
+idioma: "es"
+
+ollama:
+  url: "http://localhost:11434"
+  model: "llama3.2:3b"
+  timeout: 30
+
+audio:
+  input_device: null
+  output_device: null
+  vad_silence_ms: 800
+  sample_rate: 16000
+
+whisper:
+  model: "base"
+  compute_type: "int8"
+  language: "es"
+
+piper:
+  model_path: "models/piper/es_ES-carlfm-x_low.onnx"
+  binary_path: "bin/piper.exe"
+
+wakeword:
+  model_path: "models/openwakeword/hey_jarvis.onnx"
+  sensitivity: 0.5
+
+whitelist:
+  apps:
+    navegador: "chrome"
+    spotify: "spotify"
+    vscode: "code"
+    calculadora: "calc"
+    explorador: "explorer"
+    terminal: "cmd"
+
+skills:
+  time:
+    enabled: true

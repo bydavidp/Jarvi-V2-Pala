@@ -101,10 +101,13 @@ jarvis/
 
 ## 4. Política de permisos (el corazón del proyecto)
 
-Toda skill declara un nivel base, pero `security/policy.py` es el **único** punto que
-autoriza ejecución, y **evalúa el nivel por invocación, no por clase**: los parámetros
-concretos de cada llamada pueden elevar el nivel efectivo (ej. `volume.set(50)` es
-SYSTEM, `volume.mute()` también es SYSTEM, pero `volume.get()` podría ser SAFE).
+Cada **operación** declara su nivel base, no la clase de skill completa.
+`security/policy.py` es el **único** punto que autoriza ejecución, y **evalúa el
+nivel por invocación**: los parámetros concretos de cada llamada pueden elevar el
+nivel efectivo, pero nunca bajarlo. Ejemplo: `volume.get()` declara base SAFE,
+`volume.set()` y `volume.mute()` declaran base SYSTEM. Si `volume.set(100)` fuera
+extremo, el evaluador podría subirlo a SENSITIVE, pero `volume.get()` jamás baja
+a SAFE desde SYSTEM porque su base ya es SAFE.
 
 | Nivel | Qué incluye | Comportamiento |
 |---|---|---|
@@ -174,9 +177,22 @@ El bus es `asyncio.Queue` en proceso. El wake word corre en un **hilo**
 
 - **Justificación**: `onnxruntime` libera el GIL durante la inferencia, por lo que un hilo
   basta para no bloquear el loop asíncrono.
-- **Interfaz**: `bus.publish(event)` y `bus.subscribe(pattern, callback)`. Los llamadores
-  nunca acceden a la cola directamente. Esto permite migrar a Redis/RabbitMQ en el futuro
-  sin tocar publicadores ni suscriptores.
+- **Interfaz pública**:
+  - `bus.publish(event)`: solo para publicadores que corren en el event loop (corrutinas).
+  - `bus.publish_threadsafe(event)`: obligatorio para publicadores desde hilos. Usa
+    `loop.call_soon_threadsafe()` internamente porque `asyncio.Queue` no es thread-safe.
+  - `bus.subscribe(pattern, callback)`: registra un callback asíncrono.
+  - Los llamadores nunca acceden a la cola directamente. Esto permite migrar a
+    Redis/RabbitMQ en el futuro sin tocar publicadores ni suscriptores.
+- **Qué productor usa cada método**:
+  | Productor | Contexto | Método |
+  |---|---|---|
+  | `audio/wakeword.py` | Hilo (`threading.Thread`) | `publish_threadsafe()` |
+  | `audio/capture.py` | Hilo (sounddevice callback) | `publish_threadsafe()` |
+  | `core/orchestrator.py` | Event loop | `publish()` |
+  | `audio/tts.py` | Event loop | `publish()` |
+  | `brain/llm.py` | Event loop | `publish()` |
+  | `skills/*.py` | Event loop (despachadas por orchestrator) | `publish()` |
 - **Qué NO se usa**: Redis, RabbitMQ, multiprocessing, ni ningún broker externo.
 
 ### 8.2 Routing: matcher determinista + LLM como fallback
@@ -230,3 +246,66 @@ Piper se ejecuta invocando el binario descargado del
 - **Justificación**: el paquete de PyPI tiene dependencia de `piper-phonemize` que
   compila desde C++ y falla frecuentemente en Windows. El binario precompilado del
   release es más fiable.
+
+---
+
+## 9. Fronteras de tipos
+
+Reglas que gobiernan qué tan estricto es el tipado en cada capa y qué contratos
+cruzan los límites entre módulos.
+
+### 9.1 Niveles de exigencia por paquete
+
+| Paquete | Nivel | Regla |
+|---|---|---|
+| `core/` | **Estricto** | Type hints en todas las funciones públicas. `mypy --strict` debe pasar antes de merge. |
+| `security/` | **Estricto** | Type hints en todas las funciones públicas. `mypy --strict` debe pasar. Sin `Any` en firmas públicas. |
+| `skills/` | **Estricto** | Type hints en `run()` y en los parámetros de cada skill. `SkillResult` como tipo de retorno obligatorio. |
+| `brain/` | **Moderado** | Type hints en funciones públicas. Se tolera `Any` en payloads de Ollama (el schema depende del modelo). |
+| `audio/` | **Moderado** | Type hints en funciones públicas. Callbacks de sounddevice pueden usar `Any` para buffers numpy. |
+| `api/` | **Moderado** | Type hints en endpoints y modelos de respuesta. |
+| `ui/` | **TypeScript estricto** | `tsc --noEmit` debe pasar. Sin `any` salvo en payloads de WebSocket. |
+
+### 9.2 Contratos entre capas (qué cruza cada frontera)
+
+| Frontera | Tipo que cruza | Dirección |
+|---|---|---|
+| `audio/` → `core/` | `Event` (tipo `stt_result`, `wakeword_detected`) | Audio publica eventos al bus |
+| `core/` → `skills/` | `SkillRequest` (nombre + dict params) | Orchestrator despacha a skills |
+| `skills/` → `core/` | `SkillResult` (success, data, error) | Skill devuelve resultado |
+| `brain/` → `core/` | `RouterDecision` (action: CHAT/SKILL/SEARCH, payload) | Router clasifica intención |
+| `core/` → `api/` | `Event` (todos los tipos) | Bus → WebSocket broadcast |
+| `core/` → `audio/` | `str` (texto a hablar) | Orchestrator → TTS |
+
+Ninguna capa importa directamente de una capa superior. Las dependencias van:
+`skills/` → `security/` → `core/` ← `brain/` ← `audio/`
+
+---
+
+## 10. Pendientes conocidos
+
+### 10.1 Deuda técnica agendada
+
+Bugs latentes o riesgos técnicos con fase asignada para resolverlos.
+
+| Item | Archivo esperado | Fase | Arreglo |
+|---|---|---|---|
+| `compute_type="auto"` en Windows sin GPU NVIDIA | `audio/stt.py` | Fase 5 | Si no se detecta GPU NVIDIA (`torch.cuda.is_available()` o similar), forzar `compute_type="int8"`. `"auto"` en CPU elige `float32` y dispara latencia 3-5x. |
+| COM no inicializado en hilo de skills | `skills/volume.py` | Fase 9 | `pycaw` depende de `comtypes.CoInitialize()`. Si el hilo que ejecuta `volume.set()` no llamó a `CoInitialize`, falla con `COMError`. La skill debe llamar `pythoncom.CoInitialize()` al entrar y `CoUninitialize()` al salir. |
+
+### 10.2 Fuera del MVP
+
+Lo que **no** se va a implementar en la v1 y queda registrado para no discutirlo
+en cada fase:
+
+| Pendiente | Motivo | Fase prevista |
+|---|---|---|
+| Interrupción por voz durante TTS | Complejidad de echo cancellation en half-duplex. La v1 usa tecla. | Post v1 |
+| Soporte Linux nativo (no solo detección runtime) | El SO objetivo es Windows 11. Adaptadores de SO se escriben con `if platform == "linux"` pero no se prueban. | Post v1 |
+| Múltiples wake words ("Jarvis", "Asistente", etc.) | openWakeWord puede cargar varios modelos pero añade latencia y falsos positivos. | v1.1 |
+| Idiomas además de español | Whisper y Piper lo soportan, pero los prompts y validaciones están hardcodeados en español. | v1.1 |
+| Streaming de audio a la UI | La UI recibe solo el texto final transcrito, no audio. | Post v1 |
+| Hot-reload de skills | Las skills se cargan al inicio. Añadir/editar skills requiere reinicio. | v1.2 |
+| Cifrado del audit log | El log es SQLite en texto plano. | v1.1 |
+| Modo offline absoluto (sin internet para búsqueda) | La búsqueda web requiere internet por definición. | N/A |
+| Docker / contenedores | El acceso a micrófono, altavoz y GPU desde contenedores en Windows es inviable. | No planeado |

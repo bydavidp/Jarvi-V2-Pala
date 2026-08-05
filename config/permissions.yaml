@@ -1,0 +1,35 @@
+# Política de permisos: nivel base por operación de cada skill
+# El evaluador solo puede SUBIR el nivel, nunca bajarlo.
+
+skills:
+  time:
+    get_current_time:
+      level: SAFE
+
+  volume:
+    get:
+      level: SAFE
+    set:
+      level: SYSTEM
+    mute:
+      level: SYSTEM
+
+  apps:
+    open:
+      level: SYSTEM
+
+  browser:
+    open_url:
+      level: SAFE
+    search:
+      level: SAFE
+
+  websearch:
+    search:
+      level: SAFE
+
+  devices:
+    discover:
+      level: SENSITIVE
+    control:
+      level: SENSITIVE

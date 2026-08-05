@@ -171,6 +171,7 @@ class TestEventBus:
         with pytest.raises(EventBusError, match="no tiene un event loop enlazado"):
             bus.publish_threadsafe(Event(type="test"))
 
+    @pytest.mark.filterwarnings("ignore::RuntimeWarning")
     def test_publish_threadsafe_con_loop_cerrado(self) -> None:
         loop = asyncio.new_event_loop()
         bus = EventBus()

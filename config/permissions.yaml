@@ -1,5 +1,7 @@
 # Política de permisos: nivel base por operación de cada skill
 # El evaluador solo puede SUBIR el nivel, nunca bajarlo.
+# Las reglas de escalada son declarativas: policy.py evalúa condiciones
+# genéricas sin conocer ninguna skill por nombre.
 
 skills:
   time:
@@ -17,10 +19,19 @@ skills:
   apps:
     open:
       level: SYSTEM
+      escalate:
+        - condition: not_in_whitelist
+          param: app_name
+          to: FORBIDDEN
 
   browser:
     open_url:
       level: SAFE
+      escalate:
+        - condition: scheme_not_allowed
+          param: url
+          allowed_schemes: ["http", "https"]
+          to: FORBIDDEN
     search:
       level: SAFE
 

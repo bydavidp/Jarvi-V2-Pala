@@ -19,6 +19,14 @@ Un asistente personal **100% local** que:
 
 Objetivo de diseño: **modular**. Cada capa debe poder probarse y reemplazarse sin tocar las demás.
 
+### Fases intermedias planificadas
+
+- **Fase 6.5** — Clasificador semántico como capa 2 entre matcher y LLM:
+  `sentence-transformers` con `paraphrase-multilingual-MiniLM-L12-v2` (~120MB,
+  CPU, <100ms). Ejemplos por intención en YAML. Umbral de confianza configurable.
+  El clasificador devuelve SOLO la intención, nunca parámetros. Latencia objetivo
+  <100ms. Solo se ejecuta si el matcher no resolvió.
+
 ---
 
 ## 2. Stack fijo (no cambiar sin preguntar)
@@ -293,7 +301,7 @@ Bugs latentes o riesgos técnicos con fase asignada para resolverlos.
 | `compute_type="auto"` en Windows sin GPU NVIDIA | `audio/stt.py` | Fase 5 | Si no se detecta GPU NVIDIA (`torch.cuda.is_available()` o similar), forzar `compute_type="int8"`. `"auto"` en CPU elige `float32` y dispara latencia 3-5x. |
 | COM no inicializado en hilo de skills | `skills/volume.py` | Fase 9 | `pycaw` depende de `comtypes.CoInitialize()`. Si el hilo que ejecuta `volume.set()` no llamó a `CoInitialize`, falla con `COMError`. La skill debe llamar `pythoncom.CoInitialize()` al entrar y `CoUninitialize()` al salir. |
 | Router LLM: 31s de silencio en fallback | `core/orchestrator.py` | Fase 7 | Cuando el router degrade a LLM, emitir de inmediato una respuesta hablada de espera ("dame un momento") antes de consultar. El timeout del LLM debe producir SIEMPRE una respuesta hablada de error, nunca silencio. |
-| Despachador no fuerza `decision.resolved_params` | `core/orchestrator.py` + `skills/base.py` | Fase 3 | **Defensa en profundidad, no imposibilidad técnica.** La estrategia es: (1) `Skill._execute()` valida un token de autorización por invocación emitido por el registry; (2) si falta o es inválido, lanza `SkillAuthError` y registra intento de bypass en audit log; (3) el registry construye los argumentos exclusivamente desde `decision.resolved_params`. La garantía real es code review + audit log; el token detecta el bypass, no lo previene. |
+| Despachador no fuerza `decision.resolved_params` | `core/orchestrator.py` + `skills/base.py` | Fase 3 | **Defensa en profundidad, no imposibilidad técnica.** |** La estrategia es: (1) `Skill._execute()` valida un token de autorización por invocación emitido por el registry; (2) si falta o es inválido, lanza `SkillAuthError` y registra intento de bypass en audit log; (3) el registry construye los argumentos exclusivamente desde `decision.resolved_params`. La garantía real es code review + audit log; el token detecta el bypass, no lo previene. |
 
 ### 10.2 Fuera del MVP
 

@@ -1,77 +1,65 @@
-# Patrones de matching determinista.
-# params: {param_name: {group: N|name, type: str|int|float}}
-# Si un param falta o falla conversión -> degrada a LLM.
+# Patrones v4: manejo de relleno entre verbo y sustantivo.
 
 patterns:
-  # ── Hora ──
-  - regex: "(?i)^\\s*(?:qué|que|dime la|cual es la|dame la|quiero saber la|sabes la|me dices la) hora\\s*(?:es|actual|ahora|por favor)?\\s*$"
+  - regex: "(?i)(?:que|que|dime la|cual es la|dame la|quiero saber la|sabes la|me dices la|decime la)\\s+horas?\\b"
     skill: time
     operation: get_current_time
     params: {}
 
-  - regex: "(?i)^\\s*(?:qué|que|dime la|cual es la|dame la|quiero saber la|sabes|me dices la) fecha\\s*(?:es|actual|de hoy|por favor)?\\s*$"
+  - regex: "(?i)(?:que|que|dime la|cual es la|dame la|quiero saber la|sabes|me dices la|decime la)\\s+(?:fecha|dia)\\b"
     skill: time
     operation: get_current_time
     params: {}
 
-  # ── Volumen set: "pon el volumen a 30" ──
-  - regex: "(?i)^\\s*(?:pon|poner|ponme|cambia|cambiar|establece|deja)\\s+(?:el\\s+)?volumen\\s*(?:a|al|en)\\s*(\\d+)\\s*(?:por favor)?\\s*$"
+  - regex: "(?i)(?:pon|poner|ponme|poneme|cambia|cambiar|establece|deja|dejame)\\s+(?:el\\s+)?volumen\\s*(?:a|al|en)\\s*(\\d+)"
     skill: volume
     operation: set
     params:
       level: {group: 1, type: int}
 
-  # ── Volumen adjust sin cantidad: "sube el volumen" ──
-  - regex: "(?i)^\\s*(sube|baja|subir|bajar|aumenta|aumentar|disminuye|disminuir)\\s+(?:el\\s+)?volumen\\s*(?:por favor)?\\s*$"
+  - regex: "(?i)(?:el\\s+)?volumen\\s*(?:a|al|en)\\s*(\\d+)"
+    skill: volume
+    operation: set
+    params:
+      level: {group: 1, type: int}
+
+  - regex: "(?i)(sube|sub[ií]|sub[ií]le|subele|baja|baj[aá]|baj[aá]le|bajele|aumenta|aumentar|disminuye|disminuir)\\s+(?:(?:al|un|el|la|mi|poco|poquito|un\\s+poquito|todo)\\s+)*(?:volumen|sonido)"
     skill: volume
     operation: adjust
     params:
       delta: {group: 1, type: str}
 
-  # ── Volumen adjust con cantidad: "sube el volumen 10" ──
-  - regex: "(?i)^\\s*(sube|baja|subir|bajar|aumenta|aumentar|disminuye|disminuir)\\s+(?:el\\s+)?volumen\\s+(\\d+)\\s*(?:por favor)?\\s*$"
+  - regex: "(?i)(sube|sub[ií]|sub[ií]le|subele|baja|baj[aá]|baj[aá]le|bajele|aumenta|aumentar|disminuye|disminuir)\\s+(?:(?:al|un|el|la|mi|poco|poquito|un\\s+poquito|todo)\\s+)*(?:volumen|sonido)\\s+(\\d+)"
     skill: volume
     operation: adjust
     params:
       delta: {group: 1, type: str}
       amount: {group: 2, type: int}
 
-  # ── Mute ──
-  - regex: "(?i)^\\s*(?:silencia|silenciar|mutea|mutear|quita|quitar|apaga|apagar)\\s+(?:el\\s+)?(?:sonido|audio|volumen)\\s*(?:por favor)?\\s*$"
-    skill: volume
-    operation: mute
-    params: {}
-
-  # ── Unmute ──
-  - regex: "(?i)^\\s*(?:reactiva|reactivar|activa|activar|restaura|restaurar|enciende|encender|desmutea|desmutear)\\s+(?:el\\s+)?(?:sonido|audio|volumen)\\s*(?:por favor)?\\s*$"
+  - regex: "(?i)(?:reactiva|reactivar|activa|activar|restaura|restaurar|enciende|encender|desmutea|desmutear|ponle|ponele)\\s+(?:el\\s+)?(?:sonido|audio|volumen)(?:\\s+\\S+)*|quitale\\s+el\\s+mute"
     skill: volume
     operation: unmute
     params: {}
 
-  # ── Abrir URL (DEBE IR ANTES del patrón de apps) ──
-  - regex: "(?i)^\\s*(?:abre|abrir|ve|ir|carga|navega)\\s+(?:a|en)?\\s*(https?://\\S+)\\s*(?:por favor)?\\s*$"
+  - regex: "(?i)(?:silencia|silenci[aá]|mutea|mutear|quita|quit[aá]|quitale|apaga|apag[aá]|apagame)\\s+(?:el\\s+)?(?:sonido|audio|volumen|ruido|mute|eso|ese|todo)(?:\\s+\\S+)*"
+    skill: volume
+    operation: mute
+    params: {}
+
+  - regex: "(?i)(?:abre|abr[ií]|abrir|ve|ir|carga|navega|entr[aá])\\s+(?:a|en)?\\s*(https?://\\S+)"
     skill: browser
     operation: open_url
     params:
       url: {group: 1, type: str}
 
-  # ── Abrir app: "abre chrome" ──
-  - regex: "(?i)^\\s*(?:abre|abrir|abreme|inicia|iniciar|lanzar|ejecuta|arranca|puedes\\s+abrir|podes\\s+abrir)\\s+(?:el|la|mi)?\\s*(.+?)\\s*(?:por favor)?\\s*$"
+  - regex: "(?i)(?:abre|abr[ií]|abrir|abreme|inicia|iniciar|lanzar|arranca|puedes\\s+abrir|podes\\s+abrir|necesito\\s+que\\s+(?:me\\s+)?abras)\\s+(?:el|la|mi)?\\s*(.+?)(?:\\s+(?:por\\s+favor|porfa))?\\s*$"
     skill: apps
     operation: open
     params:
       app_name: {group: 1, type: str}
 
-  # ── Buscar: "busca tutoriales de Flask" ──
-  - regex: "(?i)^\\s*(?:busca|buscar|buscame|googlea|googlear|investiga|investigar|buscame\\s+en\\s+internet|buscame\\s+en\\s+google|busca\\s+en\\s+internet|busca\\s+en\\s+google)\\s+(.+?)\\s*(?:por favor)?\\s*$"
+  - regex: "(?i)(?:busca|busc[aá]|buscar|buscame|googlea|googlear|investiga|investig(?:a|á|ue)|investigame|buscame\\s+en\\s+internet|buscame\\s+en\\s+google|busca\\s+en\\s+internet|busca\\s+en\\s+google)\\s+(.+?)(?:\\s+(?:por\\s+favor|porfa))?\\s*$"
     skill: browser
     operation: search
     params:
       query: {group: 1, type: str}
-
-  # ── Abrir URL: "abre https://google.com" ──
-  - regex: "(?i)^\\s*(?:abre|abrir|ve|ir|carga|navega)\\s+(?:a|en)?\\s*(https?://\\S+)\\s*(?:por favor)?\\s*$"
-    skill: browser
-    operation: open_url
-    params:
-      url: {group: 1, type: str}

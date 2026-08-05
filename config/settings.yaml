@@ -18,7 +18,7 @@ whisper:
 
 piper:
   model_path: "models/piper/es_ES-carlfm-x_low.onnx"
-  binary_path: "bin/piper.exe"
+  binary_path: "bin/piper/piper.exe"
 
 wakeword:
   model_path: "models/openwakeword/hey_jarvis.onnx"

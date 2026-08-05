@@ -8,8 +8,8 @@ venv/
 .env
 *.log
 logs/*.log*
-models/
 bin/
+models/
 node_modules/
 .pytest_cache/
 .mypy_cache/

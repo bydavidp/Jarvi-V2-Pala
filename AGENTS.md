@@ -292,7 +292,7 @@ Bugs latentes o riesgos técnicos con fase asignada para resolverlos.
 |---|---|---|---|
 | `compute_type="auto"` en Windows sin GPU NVIDIA | `audio/stt.py` | Fase 5 | Si no se detecta GPU NVIDIA (`torch.cuda.is_available()` o similar), forzar `compute_type="int8"`. `"auto"` en CPU elige `float32` y dispara latencia 3-5x. |
 | COM no inicializado en hilo de skills | `skills/volume.py` | Fase 9 | `pycaw` depende de `comtypes.CoInitialize()`. Si el hilo que ejecuta `volume.set()` no llamó a `CoInitialize`, falla con `COMError`. La skill debe llamar `pythoncom.CoInitialize()` al entrar y `CoUninitialize()` al salir. |
-| Despachador no fuerza `decision.resolved_params` | `core/orchestrator.py` + `skills/base.py` | Fase 3 | `Skill.run()` recibe `**params`. La firma actual no impide que se le pasen los params crudos en vez de los resueltos. La Fase 3 debe hacer que `Skill.run()` reciba **únicamente** `decision.resolved_params` desde el despachador, sin acceso a los params originales. Test requerido: intentar ejecutar una skill con params crudos debe ser imposible por construcción. |
+| Despachador no fuerza `decision.resolved_params` | `core/orchestrator.py` + `skills/base.py` | Fase 3 | **Defensa en profundidad, no imposibilidad técnica.** Python no permite privacidad real. La estrategia es: (1) `Skill._execute()` valida un token de autorización por invocación emitido por el registry; (2) si falta o es inválido, lanza `SkillAuthError` y registra intento de bypass en audit log; (3) el registry construye los argumentos exclusivamente desde `decision.resolved_params`. La garantía real es code review + audit log; el token detecta el bypass, no lo previene. |
 
 ### 10.2 Fuera del MVP
 

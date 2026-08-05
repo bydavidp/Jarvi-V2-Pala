@@ -17,7 +17,7 @@ class TestConfig:
         settings = load_settings("config/settings.yaml")
         assert settings.idioma == "es"
         assert settings.ollama.url == "http://localhost:11434"
-        assert settings.ollama.model == "llama3.2:3b"
+        assert settings.ollama.model == "llama3.2:latest"
         assert settings.whisper.language == "es"
         assert settings.whisper.compute_type == "int8"
         assert isinstance(settings.audio.vad_silence_ms, int)

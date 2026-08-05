@@ -16,8 +16,8 @@ PIPER_VERSION = "2023.11.14-2"
 PIPER_ZIP = f"piper_windows_amd64.zip"
 PIPER_URL = f"https://github.com/rhasspy/piper/releases/download/{PIPER_VERSION}/{PIPER_ZIP}"
 
-VOICE_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/carlfm/x_low"
-VOICE_ONNX = "es_ES-carlfm-x_low.onnx"
+VOICE_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium"
+VOICE_ONNX = "es_ES-sharvard-medium.onnx"
 VOICE_JSON = f"{VOICE_ONNX}.json"
 
 BIN_DIR = Path("bin")

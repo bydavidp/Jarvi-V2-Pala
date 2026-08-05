@@ -1,0 +1,25 @@
+"""Test honesto: 20 frases en español colombiano coloquial,
+escritas SIN consultar patterns.yaml."""
+
+PHRASES = [
+    ("Oye, qué horas son", "time", "get_current_time"),
+    ("Hazme el favor y dime la hora", "time", "get_current_time"),
+    ("Súbele un poquito al volumen", "volume", "adjust"),
+    ("El volumen a 50", "volume", "set"),
+    ("Bájale al sonido", "volume", "adjust"),
+    ("Apágame ese ruido", "volume", "mute"),
+    ("Quítale el mute", "volume", "unmute"),
+    ("Ábreme el Spotify, porfa", "apps", "open"),
+    ("Necesito que me abras chrome", "apps", "open"),
+    ("Búscame en Google cómo hacer empanadas", "browser", "search"),
+    ("Investígame qué es eso del machine learning", "browser", "search"),
+    ("A ver, ¿qué día es hoy?", "time", "get_current_time"),
+    ("Súbele todo el volumen", "volume", "adjust"),
+    ("Silencia eso", "volume", "mute"),
+    ("Ponle sonido otra vez", "volume", "unmute"),
+    ("Abrí el bloc de notas", "apps", "open"),
+    ("Busca vuelos baratos a Cartagena", "browser", "search"),
+    ("Decime la fecha de hoy", "time", "get_current_time"),
+    ("Poneme el volumen en 25", "volume", "set"),
+    ("Entra a https://youtube.com", "browser", "open_url"),
+]

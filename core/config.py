@@ -9,7 +9,8 @@ from pydantic_settings import BaseSettings
 
 class OllamaConfig(BaseModel):
     url: str = "http://localhost:11434"
-    model: str = "llama3.2:3b"
+    model: str = "llama3.2:latest"
+    keep_alive: str = "30m"
     timeout: int = 30
 
 
@@ -17,6 +18,8 @@ class AudioConfig(BaseModel):
     input_device: int | None = None
     output_device: int | None = None
     vad_silence_ms: int = 800
+    vad_min_speech_ms: int = 300
+    vad_threshold: float = 0.04
     sample_rate: int = 16000
 
 

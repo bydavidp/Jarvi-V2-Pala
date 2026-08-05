@@ -2,13 +2,16 @@ idioma: "es"
 
 ollama:
   url: "http://localhost:11434"
-  model: "llama3.2:3b"
+  model: "llama3.2:latest"
+  keep_alive: "30m"
   timeout: 30
 
 audio:
   input_device: null
   output_device: null
   vad_silence_ms: 800
+  vad_min_speech_ms: 300
+  vad_threshold: 0.04
   sample_rate: 16000
 
 whisper:
@@ -17,7 +20,7 @@ whisper:
   language: "es"
 
 piper:
-  model_path: "models/piper/es_ES-carlfm-x_low.onnx"
+  model_path: "models/piper/es_ES-sharvard-medium.onnx"
   binary_path: "bin/piper/piper.exe"
 
 wakeword:

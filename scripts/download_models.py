@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Descarga el binario de Piper y el modelo de voz española.
+"""Descarga el binario de Piper, el modelo de voz y el clasificador.
 
 Uso:
     python scripts/download_models.py
@@ -19,6 +19,8 @@ PIPER_URL = f"https://github.com/rhasspy/piper/releases/download/{PIPER_VERSION}
 VOICE_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium"
 VOICE_ONNX = "es_ES-sharvard-medium.onnx"
 VOICE_JSON = f"{VOICE_ONNX}.json"
+
+CLASSIFIER_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
 
 BIN_DIR = Path("bin")
 PIPER_EXE_DIR = BIN_DIR / "piper"
@@ -60,6 +62,14 @@ def main() -> None:
         download(f"{VOICE_BASE}/{VOICE_JSON}", json_path)
     else:
         print(f"Modelo JSON ya existe: {json_path}")
+
+    print(f"\nPrecargando clasificador semantico ({CLASSIFIER_MODEL})...")
+    try:
+        from sentence_transformers import SentenceTransformer
+        SentenceTransformer(CLASSIFIER_MODEL, device="cpu")
+        print("  -> Clasificador listo (cacheado en ~/.cache/huggingface)")
+    except Exception as e:
+        print(f"  -> Error al precargar clasificador: {e}")
 
     print("Listo.")
 

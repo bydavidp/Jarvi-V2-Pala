@@ -20,6 +20,7 @@ class IntentType(str, Enum):
     CHAT = "CHAT"
     SKILL = "SKILL"
     SEARCH = "SEARCH"
+    REJECT = "REJECT"
 
 
 @dataclass
@@ -75,6 +76,13 @@ class Router:
         if self._classifier is not None:
             cls_result = self._classifier.classify(user_text)
             if cls_result is not None:
+                intent_name = cls_result["intent"]
+                if intent_name == "rechazar":
+                    return RouterDecision(
+                        intent=IntentType.REJECT,
+                        resolved_by="classifier",
+                        latency_ms=(time.perf_counter() - t0) * 1000,
+                    )
                 return RouterDecision(
                     intent=IntentType.SKILL,
                     skill_name=cls_result["skill"],

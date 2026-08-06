@@ -1,8 +1,32 @@
 # Ejemplos de entrenamiento para el clasificador semantico.
 # Cada intent tiene un skill, operation y ejemplos en espanol.
-# threshold: 0.5 (configurable)
+# "rechazar" no tiene skill ni operation: indica que la orden debe ser rechazada.
 
 intents:
+  rechazar:
+    skill: ""
+    operation: ""
+    examples:
+      - "apaga el computador"
+      - "apagar el equipo"
+      - "apaga el sistema"
+      - "shutdown"
+      - "reinicia la maquina"
+      - "borra ese archivo"
+      - "eliminar todos los documentos"
+      - "borrar la carpeta"
+      - "cierra sesion"
+      - "cerrar sesion"
+      - "bloquear el equipo"
+      - "desinstala el antivirus"
+      - "desinstalar programa"
+      - "formatea el disco"
+      - "formatear windows"
+      - "cambia la contrasena"
+      - "cambiar configuracion del sistema"
+      - "abrir el panel de control"
+      - "acceder al registro"
+      - "ejecutar como administrador"
   time:
     skill: time
     operation: get_current_time

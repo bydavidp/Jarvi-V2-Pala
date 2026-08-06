@@ -69,16 +69,19 @@ print(f"\n  POSITIVOS: {ok}/{len(POSITIVES)} = {pct}% | latencia avg: {avg_lat:.
 
 # Evaluar negativos
 print(f"\n{'='*60}")
-print("NEGATIVOS")
+print("NEGATIVOS (debe ser rechazar o sin clasificar)")
 print("=" * 60)
 fp = 0
 for phrase in NEGATIVES:
     r = clf.classify(phrase)
     if r and r["intent"]:
-        fp += 1
-        print(f"  FALSE+ '{phrase}' -> {r['intent']} ({r['score']:.2f})")
+        if r["intent"] == "rechazar":
+            print(f"  OK   '{phrase}' -> rechazar ({r['score']:.2f})")
+        else:
+            fp += 1
+            print(f"  FALSE+ '{phrase}' -> {r['intent']} ({r['score']:.2f})")
     else:
-        print(f"  OK   '{phrase}'")
+        print(f"  OK   '{phrase}' -> sin clasificar")
 print(f"\n  FALSOS POSITIVOS: {fp}/{len(NEGATIVES)}")
 
 print(f"\n  RESULTADO: {pct}% positivos, {fp} FP, {avg_lat:.0f}ms latencia media")

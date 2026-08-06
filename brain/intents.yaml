@@ -1,0 +1,131 @@
+# Ejemplos de entrenamiento para el clasificador semantico.
+# Cada intent tiene un skill, operation y ejemplos en espanol.
+# threshold: 0.5 (configurable)
+
+intents:
+  time:
+    skill: time
+    operation: get_current_time
+    examples:
+      - "que hora es"
+      - "dime la hora"
+      - "cual es la hora actual"
+      - "quiero saber la hora"
+      - "me dices la hora por favor"
+      - "sabes la hora"
+      - "que horas son"
+      - "dime que hora es"
+      - "hora por favor"
+      - "necesito saber la hora"
+
+  date:
+    skill: time
+    operation: get_current_time
+    examples:
+      - "que fecha es hoy"
+      - "cual es la fecha"
+      - "dime la fecha"
+      - "a que dia estamos"
+      - "que dia es hoy"
+      - "quiero saber la fecha"
+      - "fecha de hoy"
+
+  volume_set:
+    skill: volume
+    operation: set
+    examples:
+      - "pon el volumen a 50"
+      - "cambia el volumen al 30"
+      - "establece el volumen en 25"
+      - "deja el volumen a 80"
+      - "volumen al 50 por favor"
+      - "poneme el volumen en 40"
+      - "subi el volumen a 100"
+
+  volume_adjust:
+    skill: volume
+    operation: adjust
+    examples:
+      - "sube el volumen"
+      - "baja el volumen"
+      - "aumenta el sonido"
+      - "disminuye el audio"
+      - "subile al volumen"
+      - "bajale un poco"
+      - "mas volumen"
+      - "menos volumen"
+      - "sube el volumen 10"
+      - "baja 5 el volumen"
+      - "bajale al sonido"
+      - "subele al volumen"
+
+  mute:
+    skill: volume
+    operation: mute
+    examples:
+      - "silencia el sonido"
+      - "apaga el audio"
+      - "mutea el volumen"
+      - "quita el sonido"
+      - "silencio por favor"
+      - "callate"
+      - "apagame el ruido"
+      - "silencio total"
+      - "no quiero escuchar nada"
+
+  unmute:
+    skill: volume
+    operation: unmute
+    examples:
+      - "activa el sonido"
+      - "enciende el audio"
+      - "restaura el volumen"
+      - "desmutea"
+      - "reactiva el sonido"
+      - "ponele sonido"
+      - "volviendo el audio"
+      - "quiero escuchar de nuevo"
+      - "prendi el sonido"
+      - "volver a escuchar"
+      - "quitale el mute"
+      - "quitar el silencio"
+      - "quiero escuchar de nuevo"
+      - "prendi el sonido"
+      - "volver a escuchar"
+
+  apps_open:
+    skill: apps
+    operation: open
+    examples:
+      - "abre chrome"
+      - "abrir el navegador"
+      - "inicia spotify"
+      - "lanzar calculadora"
+      - "abrime el vscode"
+      - "ejecuta el bloc de notas"
+      - "arranca el explorador"
+      - "abrir una aplicacion"
+      - "ejecutar un programa"
+      - "iniciar una app"
+
+  browser_search:
+    skill: browser
+    operation: search
+    examples:
+      - "busca tutoriales de python"
+      - "googlea recetas"
+      - "buscar en internet"
+      - "investiga sobre machine learning"
+      - "buscame como instalar docker"
+      - "quiero buscar vuelos baratos"
+      - "busca en google noticias"
+
+  browser_open_url:
+    skill: browser
+    operation: open_url
+    examples:
+      - "abre youtube"
+      - "ir a google"
+      - "navega a wikipedia"
+      - "carga github"
+      - "entra a facebook"

@@ -56,10 +56,12 @@ class Router:
         ollama: OllamaClient,
         patterns_path: str = "brain/patterns.yaml",
         model: str = "llama3.2:3b",
+        classifier: Any = None,
     ) -> None:
         self._ollama = ollama
         self._patterns = _load_patterns(patterns_path)
         self._model = model
+        self._classifier = classifier
 
     async def route(self, user_text: str) -> RouterDecision:
         t0 = time.perf_counter()
@@ -69,6 +71,18 @@ class Router:
             decision.latency_ms = (time.perf_counter() - t0) * 1000
             decision.resolved_by = "matcher"
             return decision
+
+        if self._classifier is not None:
+            cls_result = self._classifier.classify(user_text)
+            if cls_result is not None:
+                return RouterDecision(
+                    intent=IntentType.SKILL,
+                    skill_name=cls_result["skill"],
+                    operation=cls_result["operation"],
+                    params={},
+                    resolved_by="classifier",
+                    latency_ms=(time.perf_counter() - t0) * 1000,
+                )
 
         decision = await self._llm_route(user_text)
         decision.latency_ms = (time.perf_counter() - t0) * 1000

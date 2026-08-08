@@ -53,38 +53,53 @@ class SttEngine:
         logger.info("Modelo cargado en %.2fs", elapsed)
 
     def transcribe(self, audio: bytes, sample_rate: int = 16000) -> dict[str, Any]:
-        start = time.perf_counter()
+        load_start = time.perf_counter()
         self._load_model()
+        load_ms = (time.perf_counter() - load_start) * 1000
 
         if not audio or len(audio) == 0:
-            return {"text": "", "confidence": 0.0, "duration": 0.0, "transcription_latency": 0.0}
+            return {"text": "", "avg_logprob": 0.0, "duration": 0.0, "transcription_ms": 0.0, "load_ms": load_ms}
 
         audio_np = np.frombuffer(audio, dtype=np.int16).astype(np.float32) / 32768.0
+
+        peak_before = float(np.abs(audio_np).max())
+        # Normalizar pico a 0.9 si el audio esta por debajo de nivel
+        if 0.01 < peak_before < 0.5:
+            gain = 0.9 / peak_before
+            audio_np = audio_np * gain
+            logger.info("Audio normalizado: peak %.3f -> %.3f (gain %.1fx)", peak_before, 0.9, gain)
+
+        peak_after = float(np.abs(audio_np).max())
 
         segments, info = self._model.transcribe(
             audio_np,
             language=self._config.language,
-            beam_size=5,
+            beam_size=1,
             vad_filter=True,
+            condition_on_previous_text=False,
+            no_repeat_ngram_size=3,
         )
 
         texts = []
-        confidences = []
+        logprobs = []
         for segment in segments:
             texts.append(segment.text.strip())
-            confidences.append(segment.avg_logprob)
+            logprobs.append(segment.avg_logprob)
 
-        transcription_end = time.perf_counter()
-        latency = transcription_end - start
+        infer_end = time.perf_counter()
+        infer_ms = (infer_end - load_start) * 1000 - load_ms
 
         text = " ".join(texts).strip()
-        avg_confidence = float(np.mean(confidences)) if confidences else 0.0
+        avg_logprob = float(sum(logprobs) / len(logprobs)) if logprobs else 0.0
         audio_duration = len(audio_np) / sample_rate
 
         return {
             "text": text,
-            "confidence": avg_confidence,
+            "avg_logprob": avg_logprob,
             "duration": audio_duration,
-            "transcription_latency": latency,
+            "transcription_ms": round(infer_ms, 1),
+            "load_ms": round(load_ms, 1),
             "language": info.language if info else self._config.language,
+            "peak_before": peak_before,
+            "peak_after": peak_after,
         }

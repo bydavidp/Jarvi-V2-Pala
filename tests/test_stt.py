@@ -63,4 +63,4 @@ class TestSttEngine:
         engine = SttEngine(config)
         result = engine.transcribe(b"")
         assert result["text"] == ""
-        assert result["confidence"] == 0.0
+        assert result["avg_logprob"] == 0.0

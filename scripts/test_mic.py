@@ -68,7 +68,8 @@ def main() -> None:
 
     print(f"\n[Captura] {result['duration']:.2f}s de audio ({len(result['audio'])} bytes)")
     print(f"[Captura] Latencia: {result['capture_latency']*1000:.0f}ms")
-    print(f"[VAD]     Speech frames: {result.get('speech_frames', 0)}")
+    print(f"[VAD]     Muestras de habla: {result.get('speech_samples', 0)} "
+          f"({result.get('speech_samples', 0)/16000*1000:.0f}ms)")
 
     # ── Transcribir ──────────────────────────────────────────────────
     whisper_config = config.whisper
@@ -88,12 +89,13 @@ def main() -> None:
     print("RESULTADO")
     print(f"{'='*60}")
     print(f"  Texto:       \"{stt_result['text']}\"")
-    print(f"  Confianza:   {stt_result['confidence']:.3f}")
+    print(f"  avg_logprob: {stt_result['avg_logprob']:.3f}")
     print(f"  Idioma:      {stt_result['language']}")
     print(f"")
     print(f"  DESGLOSE DE LATENCIA:")
+    print(f"    Carga modelo:    {stt_result.get('load_ms', 0):7.0f}ms")
+    print(f"    Transcripcion:   {stt_result.get('transcription_ms', 0):7.0f}ms")
     print(f"    Captura:         {result['capture_latency']*1000:7.0f}ms")
-    print(f"    Transcripción:   {stt_result['transcription_latency']*1000:7.0f}ms")
     print(f"    Total (pared):   {total_latency*1000:7.0f}ms")
 
 

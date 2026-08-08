@@ -19,7 +19,7 @@ class AudioConfig(BaseModel):
     output_device: int | None = None
     vad_silence_ms: int = 800
     vad_min_speech_ms: int = 300
-    vad_threshold: float = 0.04
+    vad_threshold: float = 0.5
     sample_rate: int = 16000
 
 

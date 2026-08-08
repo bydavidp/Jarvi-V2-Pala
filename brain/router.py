@@ -71,6 +71,7 @@ class Router:
         if decision is not None:
             decision.latency_ms = (time.perf_counter() - t0) * 1000
             decision.resolved_by = "matcher"
+            logger.info("[matcher] '%s' -> %s.%s", user_text[:60], decision.skill_name, decision.operation)
             return decision
 
         if self._classifier is not None:
@@ -78,11 +79,13 @@ class Router:
             if cls_result is not None:
                 intent_name = cls_result["intent"]
                 if intent_name == "rechazar":
+                    logger.info("[classifier] '%s' -> REJECT (score=%.2f)", user_text[:60], cls_result["score"])
                     return RouterDecision(
                         intent=IntentType.REJECT,
                         resolved_by="classifier",
                         latency_ms=(time.perf_counter() - t0) * 1000,
                     )
+                logger.info("[classifier] '%s' -> %s.%s (score=%.2f)", user_text[:60], cls_result["skill"], cls_result["operation"], cls_result["score"])
                 return RouterDecision(
                     intent=IntentType.SKILL,
                     skill_name=cls_result["skill"],
@@ -92,9 +95,11 @@ class Router:
                     latency_ms=(time.perf_counter() - t0) * 1000,
                 )
 
+        logger.info("[llm] '%s' -> consultando LLM...", user_text[:60])
         decision = await self._llm_route(user_text)
         decision.latency_ms = (time.perf_counter() - t0) * 1000
         decision.resolved_by = "llm"
+        logger.info("[llm] '%s' -> %s", user_text[:60], decision.intent.value)
         return decision
 
     def _matcher_route(self, text: str) -> RouterDecision | None:

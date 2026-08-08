@@ -11,7 +11,7 @@ audio:
   output_device: null
   vad_silence_ms: 800
   vad_min_speech_ms: 300
-  vad_threshold: 0.04
+  vad_threshold: 0.5  # probabilidad Silero VAD (0-1)
   sample_rate: 16000
 
 whisper:

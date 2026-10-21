@@ -78,6 +78,10 @@ class SttEngine:
             vad_filter=True,
             condition_on_previous_text=False,
             no_repeat_ngram_size=3,
+            # Sin temperatura fija, whisper reintenta en bucle y repite palabras
+            # (medido: 51 s para 6 s de audio). Con 0.0 y este umbral corta el bucle.
+            temperature=0.0,
+            compression_ratio_threshold=2.0,
         )
 
         texts = []

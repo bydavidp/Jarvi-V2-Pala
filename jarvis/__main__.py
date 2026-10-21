@@ -55,7 +55,7 @@ async def _main_async() -> None:
     )
 
     registry = SkillRegistry(policy)
-    discover_skills(registry)
+    discover_skills(registry, config)
 
     tts = TtsEngine(config=config.piper, bus=bus)
 

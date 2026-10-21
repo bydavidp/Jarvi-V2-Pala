@@ -20,6 +20,7 @@ class IntentType(str, Enum):
     CHAT = "CHAT"
     SKILL = "SKILL"
     SEARCH = "SEARCH"
+    CODE = "CODE"
     REJECT = "REJECT"
 
 
@@ -180,7 +181,7 @@ class Router:
                 continue
 
             intent = parsed.intent.upper()
-            if intent not in ("CHAT", "SKILL", "SEARCH"):
+            if intent not in ("CHAT", "SKILL", "SEARCH", "CODE"):
                 intent = "CHAT"
 
             return RouterDecision(

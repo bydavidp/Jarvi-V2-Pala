@@ -26,6 +26,18 @@ class DeepSeekConfig(BaseModel):
     primary_timeout: int = 10
 
 
+class CodeConfig(BaseModel):
+    """Sandbox de la skill de código. Las raíces son la frontera real."""
+
+    roots: list[str] = Field(
+        default_factory=lambda: ["%USERPROFILE%\\PROYECTOS"]
+    )
+    max_file_bytes: int = 262_144
+    # Vacío = lista por defecto de la skill (.exe, .bat, .ps1, ...).
+    blocked_extensions: list[str] = Field(default_factory=list)
+    vs_code_command: str = "code"
+
+
 class LlmConfig(BaseModel):
     """Política de rotación entre proveedores."""
 
@@ -94,6 +106,7 @@ class Settings(BaseModel):
     deepseek: DeepSeekConfig = Field(default_factory=DeepSeekConfig)
     nvidia: NvidiaConfig = Field(default_factory=NvidiaConfig)
     llm: LlmConfig = Field(default_factory=LlmConfig)
+    code: CodeConfig = Field(default_factory=CodeConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
     whisper: WhisperConfig = Field(default_factory=WhisperConfig)
     piper: PiperConfig
@@ -139,6 +152,10 @@ class Config:
     @property
     def llm(self) -> LlmConfig:
         return self.settings.llm
+
+    @property
+    def code(self) -> CodeConfig:
+        return self.settings.code
 
     @property
     def audio(self) -> AudioConfig:

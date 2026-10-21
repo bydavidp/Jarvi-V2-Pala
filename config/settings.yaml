@@ -75,3 +75,12 @@ whitelist:
 skills:
   time:
     enabled: true
+
+# Sandbox de la skill de código. Solo puede escribir dentro de estas raíces.
+code:
+  roots:
+    - "%USERPROFILE%\\PROYECTOS"
+  max_file_bytes: 262144        # 256 KB por archivo
+  blocked_extensions: []        # vacío = lista por defecto (.exe, .bat, .ps1, ...)
+  vs_code_command: "code"
+

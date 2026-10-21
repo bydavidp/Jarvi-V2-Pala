@@ -4,6 +4,7 @@ import asyncio
 import logging
 import time
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 from core.bus import Event, EventBus
@@ -68,6 +69,7 @@ class Orchestrator:
         stt_timeout: float = 10.0,
         routing_timeout: float = 15.0,
         llm_timeout: float = 30.0,
+        code_timeout: float = 90.0,
     ) -> None:
         self._capture = capture
         self._stt = stt
@@ -81,6 +83,7 @@ class Orchestrator:
         self._stt_timeout = stt_timeout
         self._routing_timeout = routing_timeout
         self._llm_timeout = llm_timeout
+        self._code_timeout = code_timeout
         self._state = OrchestratorState.IDLE
         self._interrupted = False
         self._current_llm_task: asyncio.Task[Any] | None = None
@@ -261,6 +264,10 @@ class Orchestrator:
             self._transition(OrchestratorState.IDLE)
             return
 
+        if decision.intent.value == "CODE":
+            await self._code_phase(text)
+            return
+
         # CHAT
         need_wait = decision.resolved_by == "llm"
         if need_wait:
@@ -296,6 +303,66 @@ class Orchestrator:
             await self._speak_error("llm_error")
             self._transition(OrchestratorState.IDLE)
             return
+
+        self._transition(OrchestratorState.IDLE)
+
+    async def _code_phase(self, text: str) -> None:
+        """Pide al LLM un archivo, lo escribe vía política y lo abre en VS Code."""
+        from brain.codegen import parse_code_artifact
+        from brain.prompts import CODE_SYSTEM
+
+        await self._speak("Dame un momento, lo escribo.")
+
+        try:
+            response = await asyncio.wait_for(
+                self._llm.generate(
+                    model=self._llm_model_name(),
+                    system=CODE_SYSTEM.format(user_text=text),
+                    prompt="JSON:",
+                    temperature=0.2,
+                    max_tokens=1500,
+                    num_ctx=8192,
+                ),
+                timeout=self._code_timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Timeout generando codigo")
+            await self._speak_error("llm_timeout")
+            self._transition(OrchestratorState.IDLE)
+            return
+        except Exception:
+            logger.exception("Error del LLM generando codigo")
+            await self._speak_error("llm_error")
+            self._transition(OrchestratorState.IDLE)
+            return
+
+        try:
+            artifact = parse_code_artifact(response.text)
+        except ValueError as e:
+            logger.warning("Codigo invalido del LLM: %s", e)
+            await self._speak(f"No pude generar un archivo valido: {e}.")
+            self._transition(OrchestratorState.IDLE)
+            return
+
+        result = await self._registry.execute(
+            "code",
+            "write_file",
+            {"path": artifact.path, "content": artifact.content, "overwrite": True},
+        )
+        if not result.success:
+            await self._speak(f"No pude escribir el archivo: {result.error}")
+            self._transition(OrchestratorState.IDLE)
+            return
+
+        destino = str(result.data.get("path", artifact.path))
+        abierto = await self._registry.execute(
+            "code", "open_in_vscode", {"path": artifact.path}
+        )
+        nombre = Path(destino).name
+        if abierto.success:
+            await self._speak(f"Listo. Escribi {nombre} y lo abri en VS Code.")
+        else:
+            await self._speak(f"Escribi {nombre}, pero no pude abrir VS Code: {abierto.error}")
 
         self._transition(OrchestratorState.IDLE)
 

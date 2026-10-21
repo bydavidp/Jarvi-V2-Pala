@@ -13,6 +13,7 @@ from core.orchestrator import (
     _VALID_TRANSITIONS,
     _WAITING_PHRASES,
 )
+from skills.base import SkillResult
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────
@@ -194,3 +195,82 @@ class TestDenySpoken:
         await o._process_text("que hora es")
         deps["registry"].execute.assert_called_once()
         deps["tts"].speak.assert_called()
+
+
+# ─── Flujo de código ────────────────────────────────────────────────────
+
+class TestCodeFlow:
+    def _deps_para_codigo(self):
+        deps = _mock_deps()
+        deps["tts"].speak = mock.AsyncMock()
+        deps["router"].route = mock.AsyncMock(return_value=mock.MagicMock(
+            intent=mock.MagicMock(value="CODE"),
+            resolved_by="llm",
+        ))
+        return deps
+
+    @pytest.mark.asyncio
+    async def test_escribe_y_abre_en_vscode(self) -> None:
+        deps = self._deps_para_codigo()
+        deps["llm"].generate = mock.AsyncMock(return_value=mock.MagicMock(
+            text='{"path": "suma.py", "content": "print(1 + 1)", "language": "python"}'
+        ))
+        deps["registry"].execute = mock.AsyncMock(side_effect=[
+            SkillResult(success=True, data={"path": "C:\\PROYECTOS\\suma.py"}),
+            SkillResult(success=True, data={"opened": True}),
+        ])
+
+        o = Orchestrator(**deps)
+        await o._process_text("crea un script que sume dos numeros")
+
+        llamadas = deps["registry"].execute.call_args_list
+        assert llamadas[0].args[0] == "code"
+        assert llamadas[0].args[1] == "write_file"
+        assert llamadas[0].args[2]["path"] == "suma.py"
+        assert llamadas[0].args[2]["content"] == "print(1 + 1)"
+        assert llamadas[1].args[1] == "open_in_vscode"
+
+        frases = [c.args[0] for c in deps["tts"].speak.call_args_list]
+        assert any("suma.py" in f for f in frases)
+
+    @pytest.mark.asyncio
+    async def test_json_invalido_no_escribe(self) -> None:
+        deps = self._deps_para_codigo()
+        deps["llm"].generate = mock.AsyncMock(return_value=mock.MagicMock(text="no es json"))
+
+        o = Orchestrator(**deps)
+        await o._process_text("crea un script")
+
+        deps["registry"].execute.assert_not_called()
+        frases = " ".join(c.args[0] for c in deps["tts"].speak.call_args_list)
+        assert "valido" in frases or "válido" in frases
+
+    @pytest.mark.asyncio
+    async def test_timeout_avisa_por_voz(self) -> None:
+        deps = self._deps_para_codigo()
+
+        async def lento(*a, **kw):
+            await asyncio.sleep(10)
+
+        deps["llm"].generate = lento
+        o = Orchestrator(**deps, code_timeout=0.01)
+        await o._process_text("crea un script")
+
+        deps["registry"].execute.assert_not_called()
+        assert deps["tts"].speak.call_count >= 1
+
+    @pytest.mark.asyncio
+    async def test_si_el_sandbox_rechaza_no_abre(self) -> None:
+        deps = self._deps_para_codigo()
+        deps["llm"].generate = mock.AsyncMock(return_value=mock.MagicMock(
+            text='{"path": "ok.py", "content": "x"}'
+        ))
+        deps["registry"].execute = mock.AsyncMock(return_value=SkillResult(
+            success=False, error="Ruta fuera de las carpetas permitidas"
+        ))
+
+        o = Orchestrator(**deps)
+        await o._process_text("crea un script")
+
+        deps["registry"].execute.assert_called_once()
+        assert deps["registry"].execute.call_args.args[1] == "write_file"

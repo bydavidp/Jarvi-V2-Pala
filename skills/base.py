@@ -11,6 +11,7 @@ from security.policy import DecisionType, Policy
 logger = logging.getLogger("jarvis.skills")
 
 _AUTH_TOKEN_PARAM = "_auth_token"
+_OPERATION_PARAM = "_operation"
 
 
 @dataclass
@@ -36,7 +37,7 @@ class Skill:
     def _bind_registry(self, registry: "SkillRegistry") -> None:
         self._registry = registry
 
-    async def _execute(self, _auth_token: str = "", **params: Any) -> SkillResult:
+    async def _execute(self, _auth_token: str = "", _operation: str = "", **params: Any) -> SkillResult:
         if self._registry is None:
             logger.error("Skill '%s' ejecutada sin registry enlazado", self.name)
             raise SkillAuthError(
@@ -52,7 +53,23 @@ class Skill:
                 "Usar registry.execute()."
             )
 
-        return await self._do_execute(**params)
+        llamada: dict[str, Any] = dict(params)
+        if self._acepta_operacion():
+            llamada[_OPERATION_PARAM] = _operation
+        return await self._do_execute(**llamada)
+
+    def _acepta_operacion(self) -> bool:
+        """Solo las skills que declaran `_operation` la reciben.
+
+        Así las skills de una sola operación no ven un parámetro extra y no
+        se rompe el contrato de parámetros ya validado por la política.
+        """
+        cache = self.__dict__.get("_acepta_op")
+        if cache is None:
+            firma = inspect.signature(type(self)._do_execute)
+            cache = _OPERATION_PARAM in firma.parameters
+            self.__dict__["_acepta_op"] = cache
+        return bool(cache)
 
     async def _do_execute(self, **params: Any) -> SkillResult:
         raise NotImplementedError
@@ -73,14 +90,15 @@ class SkillRegistry:
         logger.info("Skill registrada: %s (nivel %s)", skill.name, skill.level)
 
     def _validate_skill_signature(self, skill: Skill) -> None:
+        # `_operation` sí puede declararse: es cómo una skill multi-operación
+        # sabe qué ejecutar. `_auth_token` jamás, porque lo emite el registry.
         sig = inspect.signature(skill._do_execute)
-        for name in sig.parameters:
-            if name == _AUTH_TOKEN_PARAM:
-                raise ValueError(
-                    f"Skill '{skill.name}' declara el parámetro reservado "
-                    f"'{_AUTH_TOKEN_PARAM}' en _do_execute(). "
-                    "Renombra el parámetro de la skill."
-                )
+        if _AUTH_TOKEN_PARAM in sig.parameters:
+            raise ValueError(
+                f"Skill '{skill.name}' declara el parámetro reservado "
+                f"'{_AUTH_TOKEN_PARAM}' en _do_execute(). "
+                "Renombra el parámetro de la skill."
+            )
 
     def _issue_token(self, skill_name: str) -> str:
         token = secrets.token_hex(16)
@@ -130,8 +148,23 @@ class SkillRegistry:
                 needs_confirmation=True,
             )
 
+        # Los parámetros con guion bajo son del contrato interno (token,
+        # operación). Si el router o el LLM los inyectan, se rechaza.
+        reservados = [k for k in decision.resolved_params if str(k).startswith("_")]
+        if reservados:
+            logger.warning(
+                "Parámetro reservado inyectado en %s.%s: %s",
+                skill_name, operation, reservados[0],
+            )
+            return SkillResult(
+                success=False,
+                error=f"Parámetro no permitido: {reservados[0]}",
+            )
+
         token = self._issue_token(skill_name)
-        result = await skill._execute(_auth_token=token, **decision.resolved_params)
+        result = await skill._execute(
+            _auth_token=token, _operation=operation, **decision.resolved_params
+        )
 
         result_label = "executed" if result.success else "failed"
         self._audit_log(

@@ -44,3 +44,18 @@ skills:
       level: SENSITIVE
     control:
       level: SENSITIVE
+
+  # Escritura de código confinada al sandbox de `settings.yaml` -> code.roots.
+  # Va como SYSTEM (ejecuta + audit log) porque la contención la aplica la
+  # propia skill: cualquier ruta fuera de las raíces se rechaza, no se pregunta.
+  # Decisión autorizada por el usuario (ago 2026). Ver AGENTS.md 8.7.
+  code:
+    write_file:
+      level: SYSTEM
+    read_file:
+      level: SYSTEM
+    list_files:
+      level: SYSTEM
+    open_in_vscode:
+      level: SYSTEM
+

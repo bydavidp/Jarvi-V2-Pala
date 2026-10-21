@@ -278,6 +278,36 @@ Regla: **el proveedor se elige por salud y latencia medidas, no por preferencia*
   de todos los modelos y fija el más rápido que devuelva JSON válido.
 - `llm.mode: "ollama"` devuelve el sistema al modo 100% local.
 
+### 8.7 Skill de código con sandbox (escritura en VS Code)
+
+**Excepción autorizada (ago 2026, pedida explícitamente por el usuario):**
+Jarvis puede crear archivos de código y abrirlos en VS Code. Se autorizó
+bajarlo de `SENSITIVE` a `SYSTEM` **solo** porque la contención no depende de
+la política, sino de la skill:
+
+- `skills/code.py` expone `write_file`, `read_file`, `list_files` y
+  `open_in_vscode`. No hay operación de borrado.
+- La frontera real es `settings.yaml` → `code.roots` (por defecto
+  `%USERPROFILE%\PROYECTOS`). Toda ruta se expande y se resuelve (incluye
+  symlinks y `..`); si no queda dentro de una raíz, se rechaza. Fuera del
+  sandbox **no se pregunta: se niega**.
+- Se bloquean extensiones ejecutables (`.exe`, `.bat`, `.cmd`, `.ps1`,
+  `.vbs`, `.dll`, …) y hay tope de tamaño (`code.max_file_bytes`).
+- VS Code se lanza con `subprocess.run([cmd, "--reuse-window", ruta],
+  shell=False)`: lista de argumentos, nunca shell concatenado.
+- Toda ejecución pasa por `policy.check()` y queda en el audit log como
+  `SYSTEM`.
+- Flujo de voz: el router devuelve `intent=CODE` → `brain/codegen.py` valida
+  el JSON que propone el LLM (ruta relativa, contenido no vacío) → el registry
+  ejecuta `code.write_file` (política + audit) → `code.open_in_vscode`.
+- Para ampliar el sandbox se edita `code.roots` a mano. El LLM nunca decide
+  rutas absolutas.
+
+**Contrato de skills multi-operación:** `SkillRegistry.execute()` pasa la
+operación a `_do_execute()` como `_operation`, pero **solo** si la skill la
+declara en su firma. Así las skills de una sola operación no reciben
+parámetros extra. `_auth_token` sigue prohibido en `_do_execute()`.
+
 ---
 
 ## 9. Fronteras de tipos

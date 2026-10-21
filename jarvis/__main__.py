@@ -51,7 +51,7 @@ async def _main_async() -> None:
     router = Router(
         llm=llm,
         model=config.ollama.model,
-        classifier=IntentClassifier(threshold=0.60),
+        classifier=IntentClassifier(threshold=0.80),
     )
 
     registry = SkillRegistry(policy)

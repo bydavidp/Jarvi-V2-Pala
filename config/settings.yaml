@@ -23,10 +23,10 @@ llm:
   mode: "auto"           # auto | ollama
   rotation: "fastest"    # fastest | round_robin
   providers:             # orden base; el benchmark puede reordenarlo por latencia
-    - "deepseek"
+    # "deepseek" fuera temporalmente: la cuenta tiene saldo 0 (402). Volver a añadirlo al recargar.
     - "nvidia"
     - "ollama"
-  switch_after_slow_ms: 2500   # respuesta más lenta = cuenta como "lenta"
+  switch_after_slow_ms: 4000   # NVIDIA responde en 2.4-4 s; con 2500 se aparcaba sin estar caída
   slow_trip_count: 2           # 2 lentas seguidas -> se aparca
   failure_trip_count: 2        # 2 fallos seguidos -> se aparca
   cooldown_s: 120              # cuánto queda aparcado antes de reintentar
@@ -43,7 +43,7 @@ nvidia:
   primary_timeout: 8
 
 audio:
-  input_device: null
+  input_device: 17   # Micrófono (Realtek HD Audio Mic input); el array AMD captaba señal muy baja
   output_device: null
   vad_silence_ms: 800
   vad_min_speech_ms: 300

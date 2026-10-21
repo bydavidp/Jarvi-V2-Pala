@@ -67,7 +67,7 @@ class Orchestrator:
         wakeword: Any = None,
         listen_key: str = "space",
         stt_timeout: float = 10.0,
-        routing_timeout: float = 15.0,
+        routing_timeout: float = 20.0,
         llm_timeout: float = 30.0,
         code_timeout: float = 90.0,
     ) -> None:
@@ -367,6 +367,12 @@ class Orchestrator:
         self._transition(OrchestratorState.IDLE)
 
     async def _execute_skill(self, decision: Any) -> None:
+        if self._registry.get_skill(decision.skill_name) is None:
+            logger.warning("Skill no registrada: %s", decision.skill_name)
+            await self._speak("Esa función todavía no está disponible.")
+            self._transition(OrchestratorState.IDLE)
+            return
+
         try:
             result = await asyncio.wait_for(
                 self._registry.execute(decision.skill_name, decision.operation, decision.params),

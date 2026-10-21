@@ -10,7 +10,8 @@ import sys
 from audio.capture import AudioCapture
 from audio.stt import SttEngine
 from audio.tts import TtsEngine
-from brain.llm import OllamaClient
+from audio.wakeword import WakeWordListener
+from brain.llm import build_llm_client
 from brain.router import Router
 from brain.classifier import IntentClassifier
 from core.bus import EventBus
@@ -45,14 +46,10 @@ async def _main_async() -> None:
 
     stt = SttEngine(config.whisper)
 
-    ollama = OllamaClient(
-        base_url=config.ollama.url,
-        timeout=config.ollama.timeout,
-        keep_alive=config.ollama.keep_alive,
-    )
+    llm = build_llm_client(config)
 
     router = Router(
-        ollama=ollama,
+        llm=llm,
         model=config.ollama.model,
         classifier=IntentClassifier(threshold=0.60),
     )
@@ -62,14 +59,21 @@ async def _main_async() -> None:
 
     tts = TtsEngine(config=config.piper, bus=bus)
 
+    wakeword = WakeWordListener(
+        bus=bus,
+        device=config.audio.input_device,
+        sensitivity=config.wakeword.sensitivity,
+    )
+
     orch = Orchestrator(
         capture=capture,
         stt=stt,
         router=router,
-        llm=ollama,
+        llm=llm,
         tts=tts,
         registry=registry,
         bus=bus,
+        wakeword=wakeword,
     )
 
     print("JARVIS listo. Presiona ESPACIO para hablar, ESC para interrumpir.\n")

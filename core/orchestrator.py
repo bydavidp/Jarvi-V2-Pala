@@ -38,7 +38,7 @@ _ERROR_PHRASES = {
     "no_transcription": "No entendi lo que dijiste. Podrias repetirlo?",
     "routing_timeout": "Me esta tomando mucho decidir. Intenta de nuevo.",
     "llm_timeout": "El modelo esta tardando mucho. Intenta con una pregunta mas corta.",
-    "llm_error": "Hubo un error al consultar el modelo. Revisa que Ollama este corriendo.",
+    "llm_error": "Hubo un error al consultar el modelo. Revisa la conexion y que Ollama este corriendo.",
     "skill_error": "No pude ejecutar esa accion.",
     "deny": None,  # se rellena con el motivo del policy
 }
@@ -63,6 +63,7 @@ class Orchestrator:
         tts: Any,
         registry: Any,
         bus: EventBus | None = None,
+        wakeword: Any = None,
         listen_key: str = "space",
         stt_timeout: float = 10.0,
         routing_timeout: float = 15.0,
@@ -75,6 +76,7 @@ class Orchestrator:
         self._tts = tts
         self._registry = registry
         self._bus = bus
+        self._wakeword = wakeword
         self._listen_key = listen_key
         self._stt_timeout = stt_timeout
         self._routing_timeout = routing_timeout
@@ -83,6 +85,7 @@ class Orchestrator:
         self._interrupted = False
         self._current_llm_task: asyncio.Task[Any] | None = None
         self._speaking_end = 0.0
+        self._wake_word_event = asyncio.Event()
 
     # ─── Public API ────────────────────────────────────────────────────
 
@@ -91,8 +94,21 @@ class Orchestrator:
         return self._state
 
     async def start(self) -> None:
-        logger.info("Orchestrator iniciado. Presiona '%s' para hablar.", self._listen_key)
+        logger.info("Orchestrator iniciado. Presiona '%s' o di 'Jarvis'.", self._listen_key)
         self._emit_state()
+
+        # Lanzar wake word en hilo aparte
+        if self._wakeword is not None:
+            import threading
+            self._wakeword._running = True
+            ww_thread = threading.Thread(target=self._wakeword.start, daemon=True)
+            ww_thread.start()
+            logger.info("Wake word listener iniciado en hilo separado")
+
+            # Suscribir a eventos del wake word
+            async def _on_wake_word(event: Event) -> None:
+                self._wake_word_event.set()
+            self._bus.subscribe("WAKE_WORD_DETECTED", _on_wake_word)
 
         # Drenar stdin para evitar triggers espurios del terminal
         import msvcrt
@@ -112,7 +128,7 @@ class Orchestrator:
                     if msvcrt.kbhit():
                         key = msvcrt.getch()
                         if key == b" ":
-                            self.trigger()
+                            self.trigger("keyboard")
                         elif key == b"\x1b":
                             self._interrupted = True
                             self._tts.stop()
@@ -126,6 +142,11 @@ class Orchestrator:
 
         while True:
             try:
+                # Si hay wake word pendiente y estamos IDLE, disparar
+                if self._wake_word_event.is_set() and self._state == OrchestratorState.IDLE:
+                    self._wake_word_event.clear()
+                    self.trigger("wakeword")
+
                 if self._state == OrchestratorState.IDLE:
                     await asyncio.sleep(0.1)
                 elif self._state == OrchestratorState.LISTENING:
@@ -146,9 +167,9 @@ class Orchestrator:
                 await asyncio.sleep(1)
                 self._transition(OrchestratorState.IDLE)
 
-    def trigger(self) -> None:
+    def trigger(self, source: str = "keyboard") -> None:
         if self._state == OrchestratorState.IDLE:
-            logger.info("Trigger recibido, pasando a LISTENING")
+            logger.info("Trigger: %s", source)
             self._transition(OrchestratorState.LISTENING)
 
     # ─── Fases ─────────────────────────────────────────────────────────
@@ -156,6 +177,8 @@ class Orchestrator:
     async def _listen_phase(self) -> None:
         self._interrupted = False
         logger.info("Escuchando...")
+        if self._wakeword:
+            self._wakeword.suspend()
 
         try:
             result = await asyncio.wait_for(
@@ -345,6 +368,9 @@ class Orchestrator:
         old = self._state
         self._state = to
 
+        if to == OrchestratorState.IDLE and self._wakeword:
+            self._wakeword.resume()
+
         if to == OrchestratorState.SPEAKING:
             self._speaking_end = time.monotonic() + 100.0
         elif old == OrchestratorState.SPEAKING:
@@ -364,7 +390,8 @@ class Orchestrator:
         return self._stt_timeout
 
     def _llm_model_name(self) -> str:
-        return "llama3.2:latest"
+        """Modelo activo: lo resuelve el cliente híbrido en cada llamada."""
+        return getattr(self._llm, "model", "llama3.2:latest")
 
     def is_speaking(self) -> bool:
         return self._state == OrchestratorState.SPEAKING

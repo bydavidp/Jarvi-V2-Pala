@@ -14,6 +14,43 @@ class OllamaConfig(BaseModel):
     timeout: int = 30
 
 
+class DeepSeekConfig(BaseModel):
+    """API en la nube. La key va en .env, nunca aquí."""
+
+    enabled: bool = True
+    url: str = "https://api.deepseek.com"
+    model: str = "deepseek-flash"
+    models: list[str] = Field(default_factory=lambda: ["deepseek-flash", "deepseek-v4-pro"])
+    effort: str = ""  # low | high | max; vacío = lo que decida el servidor
+    timeout: int = 20
+    primary_timeout: int = 10
+
+
+class LlmConfig(BaseModel):
+    """Política de rotación entre proveedores."""
+
+    mode: str = "auto"  # auto | ollama
+    rotation: str = "fastest"  # fastest | round_robin
+    providers: list[str] = Field(
+        default_factory=lambda: ["deepseek", "nvidia", "ollama"]
+    )
+    switch_after_slow_ms: int = 2500
+    slow_trip_count: int = 2
+    failure_trip_count: int = 2
+    cooldown_s: int = 120
+
+
+class NvidiaConfig(BaseModel):
+    """NVIDIA NIM (integrate.api.nvidia.com). Key en .env, nunca aquí."""
+
+    enabled: bool = True
+    url: str = "https://integrate.api.nvidia.com/v1"
+    model: str = "nvidia/nemotron-3.5-lightning-30b-a3b"
+    models: list[str] = Field(default_factory=list)  # vacío = descubrir todos
+    timeout: int = 30
+    primary_timeout: int = 8
+
+
 class AudioConfig(BaseModel):
     input_device: int | None = None
     output_device: int | None = None
@@ -35,7 +72,7 @@ class PiperConfig(BaseModel):
 
 
 class WakeWordConfig(BaseModel):
-    model_path: str
+    model: str = "hey_jarvis_v0.1"
     sensitivity: float = 0.5
 
 
@@ -54,6 +91,9 @@ class SkillsConfig(BaseModel):
 class Settings(BaseModel):
     idioma: str = "es"
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
+    deepseek: DeepSeekConfig = Field(default_factory=DeepSeekConfig)
+    nvidia: NvidiaConfig = Field(default_factory=NvidiaConfig)
+    llm: LlmConfig = Field(default_factory=LlmConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
     whisper: WhisperConfig = Field(default_factory=WhisperConfig)
     piper: PiperConfig
@@ -65,6 +105,8 @@ class Settings(BaseModel):
 class Secrets(BaseSettings):
     pin: str = ""
     search_api_key: str = ""
+    deepseek_api_key: str = ""
+    nvidia_api_key: str = ""
 
     model_config = {
         "env_file": ".env",
@@ -85,6 +127,18 @@ class Config:
     @property
     def ollama(self) -> OllamaConfig:
         return self.settings.ollama
+
+    @property
+    def deepseek(self) -> DeepSeekConfig:
+        return self.settings.deepseek
+
+    @property
+    def nvidia(self) -> NvidiaConfig:
+        return self.settings.nvidia
+
+    @property
+    def llm(self) -> LlmConfig:
+        return self.settings.llm
 
     @property
     def audio(self) -> AudioConfig:
@@ -117,6 +171,14 @@ class Config:
     @property
     def search_api_key(self) -> str:
         return self.secrets.search_api_key
+
+    @property
+    def deepseek_api_key(self) -> str:
+        return self.secrets.deepseek_api_key
+
+    @property
+    def nvidia_api_key(self) -> str:
+        return self.secrets.nvidia_api_key
 
 
 def load_settings(path: str) -> Settings:

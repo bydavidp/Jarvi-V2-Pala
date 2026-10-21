@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field, ValidationError
 
-from brain.llm import LlmResponse, OllamaClient, OllamaError
+from brain.llm import LlmClient, LlmError, LlmResponse
 from brain.prompts import ROUTER_SYSTEM
 
 logger = logging.getLogger("jarvis.brain.router")
@@ -54,12 +54,12 @@ def _load_patterns(path: str) -> list[dict[str, Any]]:
 class Router:
     def __init__(
         self,
-        ollama: OllamaClient,
+        llm: LlmClient,
         patterns_path: str = "brain/patterns.yaml",
         model: str = "llama3.2:3b",
         classifier: Any = None,
     ) -> None:
-        self._ollama = ollama
+        self._llm = llm
         self._patterns = _load_patterns(patterns_path)
         self._model = model
         self._classifier = classifier
@@ -155,7 +155,7 @@ class Router:
 
         for attempt in (1, 2):
             try:
-                response = await self._ollama.generate(
+                response = await self._llm.generate(
                     model=self._model,
                     prompt="JSON:",
                     system=system,
@@ -163,8 +163,8 @@ class Router:
                     max_tokens=128,
                     num_ctx=512,
                 )
-            except OllamaError as e:
-                logger.error("Error de Ollama en routing (intento %d): %s", attempt, e)
+            except LlmError as e:
+                logger.error("Error del LLM en routing (intento %d): %s", attempt, e)
                 return RouterDecision(intent=IntentType.CHAT, resolved_by="llm")
 
             try:

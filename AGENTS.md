@@ -37,7 +37,7 @@ Objetivo de diseño: **modular**. Cada capa debe poder probarse y reemplazarse s
 | STT | `faster-whisper` (modelo `small` o `base`, español) |
 | Wake word | `openWakeWord` |
 | VAD | `webrtcvad` o `silero-vad` |
-| LLM | Ollama (HTTP local `http://localhost:11434`) |
+| LLM | Híbrido con rotación: DeepSeek + NVIDIA NIM + Ollama local (elige el más rápido y sano) |
 | TTS | Piper (voz española) |
 | Control del SO | `subprocess`, `psutil`, `pycaw` (Windows) / `pactl` (Linux), `pyautogui` |
 | UI / avatar | React + Vite + TypeScript, conectada por WebSocket |
@@ -49,6 +49,12 @@ Reglas de dependencias:
 - No agregues una librería nueva sin justificarla en el mensaje de salida.
 - Nada de servicios en la nube salvo búsqueda web explícita.
 - Todo debe correr sin internet excepto las skills de búsqueda.
+
+> **Excepción autorizada (ago 2026, pedida explícitamente por el usuario):**
+> el LLM puede usar APIs en la nube (DeepSeek y NVIDIA) porque el usuario lo pidió
+> así. No rompe la regla de resiliencia: si no hay red, no hay key o todos los
+> proveedores fallan, Jarvis responde con Ollama local (`llm.mode: "ollama"` lo deja
+> 100% local). Ver 8.6.
 
 ---
 
@@ -254,6 +260,23 @@ Piper se ejecuta invocando el binario descargado del
 - **Justificación**: el paquete de PyPI tiene dependencia de `piper-phonemize` que
   compila desde C++ y falla frecuentemente en Windows. El binario precompilado del
   release es más fiable.
+
+### 8.6 LLM híbrido con conmutación automática
+
+Regla: **el proveedor se elige por salud y latencia medidas, no por preferencia**.
+
+- `brain/llm.py` expone tres clientes que cumplen el protocolo `LlmClient`:
+  `OllamaClient`, `DeepSeekClient` y `HybridClient`. Router y orchestrator no saben
+  a quién están llamando.
+- `HybridClient` intenta el primario con un tope de tiempo (`deepseek.primary_timeout`,
+  10s por defecto). Si falla o se pasa del tope, responde el secundario.
+- *Circuit breaker*: `failure_trip_count` fallos seguidos o `slow_trip_count`
+  respuestas más lentas que `switch_after_slow_ms` aparcan el primario durante
+  `cooldown_s`. Al expirar se reintenta una vez (half-open); si va bien, se queda.
+- La API key vive en `.env` (`DEEPSEEK_API_KEY`). Nunca en YAML, nunca en git.
+- El modelo no se elige a ojo: `python scripts/bench_llm.py --apply` mide latencia real
+  de todos los modelos y fija el más rápido que devuelva JSON válido.
+- `llm.mode: "ollama"` devuelve el sistema al modo 100% local.
 
 ---
 

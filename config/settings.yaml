@@ -6,6 +6,42 @@ ollama:
   keep_alive: "30m"
   timeout: 30
 
+deepseek:
+  enabled: true
+  url: "https://api.deepseek.com"
+  # Se elige con scripts/bench_models.py (mide latencia real de cada modelo).
+  # Valor provisional: el tier "flash" es el rápido de la API.
+  model: "deepseek-flash"
+  models:
+    - "deepseek-flash"
+    - "deepseek-v4-pro"
+  effort: ""        # low | high | max | vacío (default del servidor)
+  timeout: 20
+  primary_timeout: 10   # si DeepSeek tarda más, se responde con Ollama
+
+llm:
+  mode: "auto"           # auto | ollama
+  rotation: "fastest"    # fastest | round_robin
+  providers:             # orden base; el benchmark puede reordenarlo por latencia
+    - "deepseek"
+    - "nvidia"
+    - "ollama"
+  switch_after_slow_ms: 2500   # respuesta más lenta = cuenta como "lenta"
+  slow_trip_count: 2           # 2 lentas seguidas -> se aparca
+  failure_trip_count: 2        # 2 fallos seguidos -> se aparca
+  cooldown_s: 120              # cuánto queda aparcado antes de reintentar
+
+nvidia:
+  enabled: true
+  url: "https://integrate.api.nvidia.com/v1"
+  # Se elige con scripts/bench_models.py. Requiere NVIDIA_API_KEY en .env.
+  # Medido: el más rápido con JSON válido fue nemotron-3-ultra (2.9 s);
+  # el "lightning" es más rápido aún (1.6 s) pero no devolvió JSON válido.
+  model: "nvidia/nemotron-3-ultra-550b-a55b"
+  models: []        # vacío = descubrir todos los de /models
+  timeout: 30
+  primary_timeout: 8
+
 audio:
   input_device: null
   output_device: null
@@ -24,7 +60,7 @@ piper:
   binary_path: "bin/piper/piper.exe"
 
 wakeword:
-  model_path: "models/openwakeword/hey_jarvis.onnx"
+  model: "hey_jarvis_v0.1"
   sensitivity: 0.5
 
 whitelist:

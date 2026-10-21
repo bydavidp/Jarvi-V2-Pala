@@ -43,7 +43,9 @@ nvidia:
   primary_timeout: 8
 
 audio:
-  input_device: 17   # Micrófono (Realtek HD Audio Mic input); el array AMD captaba señal muy baja
+  # null = micrófono predeterminado de Windows. El índice 17 (Realtek WDM-KS) no abre con la API bloqueante.
+  # Para usar el Realtek: Configuración de sonido > Entrada > dispositivo predeterminado.
+  input_device: null
   output_device: null
   vad_silence_ms: 800
   vad_min_speech_ms: 300

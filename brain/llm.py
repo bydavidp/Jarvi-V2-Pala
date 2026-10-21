@@ -675,7 +675,8 @@ class HybridClient:
         benchmark); un id de DeepSeek o NVIDIA no sirve en los otros.
         """
         hint = (hint or "").strip()
-        if hint and provider.provider_name == "ollama":
+        remotos = {p.model for p in self._providers if p.provider_name != "ollama"}
+        if hint and provider.provider_name == "ollama" and hint not in remotos:
             return hint
         return provider.model
 

@@ -524,3 +524,18 @@ class TestBuildLlmClient:
 
     def test_load_latency_rank_sin_archivo(self, tmp_path) -> None:
         assert load_latency_rank(tmp_path / "no-existe.json") == {}
+
+class TestHintDeModelo:
+    def test_ollama_no_recibe_el_modelo_de_nvidia(self) -> None:
+        nv = FakeClient(model="nvidia/nemotron-x", provider="nvidia")
+        local = FakeClient(model="llama3.2:latest", provider="ollama")
+        hybrid = HybridClient(providers=[nv, local])
+
+        assert hybrid._model_for(local, "nvidia/nemotron-x") == "llama3.2:latest"
+
+    def test_ollama_acepta_un_modelo_local_como_hint(self) -> None:
+        nv = FakeClient(model="nvidia/nemotron-x", provider="nvidia")
+        local = FakeClient(model="llama3.2:latest", provider="ollama")
+        hybrid = HybridClient(providers=[nv, local])
+
+        assert hybrid._model_for(local, "qwen2.5-coder:0.5b") == "qwen2.5-coder:0.5b"

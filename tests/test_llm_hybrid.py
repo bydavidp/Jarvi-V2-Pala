@@ -468,9 +468,17 @@ def _config(**overrides):
             timeout=30,
             primary_timeout=8,
         ),
+        groq=SimpleNamespace(
+            enabled=False,
+            url="https://api.groq.com/openai/v1",
+            model="llama-3.1-8b-instant",
+            timeout=20,
+            primary_timeout=6,
+        ),
         llm=_llm_config(),
         deepseek_api_key="sk-test",
         nvidia_api_key="nvapi-test",
+        groq_api_key="",
     )
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -539,3 +547,33 @@ class TestHintDeModelo:
         hybrid = HybridClient(providers=[nv, local])
 
         assert hybrid._model_for(local, "qwen2.5-coder:0.5b") == "qwen2.5-coder:0.5b"
+
+class TestGroq:
+    def test_cliente_groq_usa_dialecto_openai(self) -> None:
+        from brain.llm import GroqClient, GroqError, RemoteLlmError
+
+        cliente = GroqClient(api_key="gsk_test")
+
+        assert cliente.provider_name == "groq"
+        assert cliente.model == "llama-3.1-8b-instant"
+        assert issubclass(GroqError, RemoteLlmError)
+
+    def test_fabrica_incluye_groq_si_hay_key(self, monkeypatch) -> None:
+        from brain.llm import HybridClient, build_llm_client
+        from core.config import Config
+
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_test")
+        cliente = build_llm_client(Config())
+
+        assert isinstance(cliente, HybridClient)
+        assert "groq" in [p["name"] for p in cliente.status()["providers"]]
+
+    def test_fabrica_deja_groq_fuera_sin_key(self, monkeypatch) -> None:
+        from brain.llm import HybridClient, build_llm_client
+        from core.config import Config
+
+        monkeypatch.setenv("GROQ_API_KEY", "")
+        cliente = build_llm_client(Config())
+
+        if isinstance(cliente, HybridClient):
+            assert "groq" not in [p["name"] for p in cliente.status()["providers"]]

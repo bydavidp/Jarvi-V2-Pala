@@ -450,6 +450,25 @@ class NvidiaClient(OpenAICompatibleClient):
         super().__init__(api_key, base_url, default_model, timeout, effort)
 
 
+class GroqError(RemoteLlmError):
+    """Error de la API de Groq."""
+
+
+class GroqClient(OpenAICompatibleClient):
+    provider_name = "groq"
+    error_cls = GroqError
+
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://api.groq.com/openai/v1",
+        default_model: str = "llama-3.1-8b-instant",
+        timeout: float = 20.0,
+        effort: str = "",
+    ) -> None:
+        super().__init__(api_key, base_url, default_model, timeout, effort)
+
+
 # ─── Rotación automática ───────────────────────────────────────────────
 
 
@@ -820,6 +839,20 @@ def build_llm_client(config: "Config") -> LlmClient:
         timeouts["nvidia"] = float(nv.primary_timeout)
     elif nv.enabled:
         logger.warning("LLM: falta NVIDIA_API_KEY en .env; NVIDIA queda fuera")
+
+    gq = config.groq
+    if gq.enabled and config.groq_api_key.strip():
+        candidatos.append(
+            GroqClient(
+                api_key=config.groq_api_key,
+                base_url=gq.url,
+                default_model=gq.model,
+                timeout=gq.timeout,
+            )
+        )
+        timeouts["groq"] = float(gq.primary_timeout)
+    elif gq.enabled:
+        logger.warning("LLM: falta GROQ_API_KEY en .env; Groq queda fuera")
 
     candidatos.append(ollama)
 

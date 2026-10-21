@@ -24,12 +24,21 @@ llm:
   rotation: "fastest"    # fastest | round_robin
   providers:             # orden base; el benchmark puede reordenarlo por latencia
     # "deepseek" fuera temporalmente: la cuenta tiene saldo 0 (402). Volver a añadirlo al recargar.
+    - "groq"
     - "nvidia"
     - "ollama"
   switch_after_slow_ms: 4000   # NVIDIA responde en 2.4-4 s; con 2500 se aparcaba sin estar caída
   slow_trip_count: 2           # 2 lentas seguidas -> se aparca
   failure_trip_count: 2        # 2 fallos seguidos -> se aparca
   cooldown_s: 120              # cuánto queda aparcado antes de reintentar
+
+groq:
+  enabled: true
+  url: "https://api.groq.com/openai/v1"
+  # Modelo rápido de producción de Groq (~560 tok/s). Key en .env: GROQ_API_KEY.
+  model: "llama-3.1-8b-instant"
+  timeout: 20
+  primary_timeout: 6
 
 nvidia:
   enabled: true

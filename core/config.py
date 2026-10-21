@@ -52,6 +52,16 @@ class LlmConfig(BaseModel):
     cooldown_s: int = 120
 
 
+class GroqConfig(BaseModel):
+    """Groq (api.groq.com, dialecto OpenAI). Key en .env, nunca aquí."""
+
+    enabled: bool = True
+    url: str = "https://api.groq.com/openai/v1"
+    model: str = "llama-3.1-8b-instant"
+    timeout: int = 20
+    primary_timeout: int = 6
+
+
 class NvidiaConfig(BaseModel):
     """NVIDIA NIM (integrate.api.nvidia.com). Key en .env, nunca aquí."""
 
@@ -105,6 +115,7 @@ class Settings(BaseModel):
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
     deepseek: DeepSeekConfig = Field(default_factory=DeepSeekConfig)
     nvidia: NvidiaConfig = Field(default_factory=NvidiaConfig)
+    groq: GroqConfig = Field(default_factory=GroqConfig)
     llm: LlmConfig = Field(default_factory=LlmConfig)
     code: CodeConfig = Field(default_factory=CodeConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
@@ -120,6 +131,7 @@ class Secrets(BaseSettings):
     search_api_key: str = ""
     deepseek_api_key: str = ""
     nvidia_api_key: str = ""
+    groq_api_key: str = ""
 
     model_config = {
         "env_file": ".env",
@@ -148,6 +160,10 @@ class Config:
     @property
     def nvidia(self) -> NvidiaConfig:
         return self.settings.nvidia
+
+    @property
+    def groq(self) -> GroqConfig:
+        return self.settings.groq
 
     @property
     def llm(self) -> LlmConfig:
@@ -196,6 +212,10 @@ class Config:
     @property
     def nvidia_api_key(self) -> str:
         return self.secrets.nvidia_api_key
+
+    @property
+    def groq_api_key(self) -> str:
+        return self.secrets.groq_api_key
 
 
 def load_settings(path: str) -> Settings:
